@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Phần mềm quản lý labo nha khoa</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Roboto&display=swap" rel="stylesheet" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body {
+      font-family: 'Roboto', sans-serif;
+    }
+  </style>
+</head>
+<body class="bg-gray-100 min-h-screen flex flex-col">
+  <header class="bg-white shadow p-4 flex justify-between items-center">
+    <h1 class="text-2xl font-bold text-blue-600">Quản lý Labo Nha Khoa</h1>
+  <nav>
+      <ul id="menu" class="flex space-x-6 text-gray-700">
+        <li><a href="#" id="menu-attendance" class="hover:text-blue-600 transition hidden">Chấm công</a></li>
+        <li><a href="#" id="menu-orders" class="hover:text-blue-600 transition hidden">Đơn hàng</a></li>
+        <li><a href="#" id="menu-progress" class="hover:text-blue-600 transition hidden">Tiến độ công việc</a></li>
+        <li><a href="#" id="menu-qr" class="hover:text-blue-600 transition hidden">Quét mã QR</a></li>
+      </ul>
+    </nav>
+  </header>
+
+  <main class="flex-grow p-6">
+    <section id="content" class="bg-white rounded shadow p-6">
+      <h2 class="text-xl font-semibold mb-4">Chào mừng đến với phần mềm quản lý labo nha khoa</h2>
+      <p>Vui lòng đăng nhập để bắt đầu.</p>
+    </section>
+  </main>
+
+  <footer class="bg-white shadow p-4 text-center text-gray-500 text-sm">
+    &copy; 2024 Phần mềm quản lý labo nha khoa
+  </footer>
+
+  <script>
+    // Simple frontend auth and role-based UI
+    const menuAttendance = document.getElementById('menu-attendance');
+    const menuOrders = document.getElementById('menu-orders');
+    const menuProgress = document.getElementById('menu-progress');
+    const menuQR = document.getElementById('menu-qr');
+    const content = document.getElementById('content');
+
+    function showMenuForRole(role) {
+      menuAttendance.classList.add('hidden');
+      menuOrders.classList.add('hidden');
+      menuProgress.classList.add('hidden');
+      menuQR.classList.add('hidden');
+
+      if (role === 'admin') {
+        menuAttendance.classList.remove('hidden');
+        menuOrders.classList.remove('hidden');
+        menuProgress.classList.remove('hidden');
+        menuQR.classList.remove('hidden');
+      } else if (role === 'coordinator') {
+        menuOrders.classList.remove('hidden');
+        menuProgress.classList.remove('hidden');
+        menuQR.classList.remove('hidden');
+      } else if (role === 'employee') {
+        menuProgress.classList.remove('hidden');
+        menuQR.classList.remove('hidden');
+      }
+    }
+
+    function renderLogin() {
+      content.innerHTML = `
+        <h2 class="text-xl font-semibold mb-4">Đăng nhập</h2>
+        <form id="login-form" class="space-y-4">
+          <div>
+            <label class="block mb-1" for="username">Tên đăng nhập</label>
+            <input id="username" name="username" type="text" required class="w-full border border-gray-300 rounded px-3 py-2" />
+          </div>
+          <div>
+            <label class="block mb-1" for="password">Mật khẩu</label>
+            <input id="password" name="password" type="password" required class="w-full border border-gray-300 rounded px-3 py-2" />
+          </div>
+          <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition">Đăng nhập</button>
+        </form>
+        <p id="login-error" class="text-red-600 mt-2 hidden"></p>
+      `;
+
+      const form = document.getElementById('login-form');
+      const errorMsg = document.getElementById('login-error');
+
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        errorMsg.classList.add('hidden');
+        const username = form.username.value;
+        const password = form.password.value;
+
+        try {
+          const res = await fetch('http://localhost:3000/api/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username, password }),
+          });
+          if (!res.ok) {
+            const data = await res.json();
+            errorMsg.textContent = data.message || 'Lỗi đăng nhập';
+            errorMsg.classList.remove('hidden');
+            return;
+          }
+          const data = await res.json();
+          localStorage.setItem('token', data.token);
+          localStorage.setItem('role', data.role);
+          showMenuForRole(data.role);
+          renderContentForRole(data.role);
+        } catch (err) {
+          errorMsg.textContent = 'Lỗi kết nối đến server';
+          errorMsg.classList.remove('hidden');
+        }
+      });
+    }
+
+    function renderContentForRole(role) {
+      content.innerHTML = `
+        <h2 class="text-xl font-semibold mb-4">Chức năng chính</h2>
+        <p>Bạn đã đăng nhập với vai trò: <strong>${role}</strong></p>
+        <button id="logout-btn" class="mt-4 bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 transition">Đăng xuất</button>
+      `;
+
+      document.getElementById('logout-btn').addEventListener('click', () => {
+        localStorage.removeItem('token');
+        localStorage.removeItem('role');
+        menuAttendance.classList.add('hidden');
+        menuOrders.classList.add('hidden');
+        menuProgress.classList.add('hidden');
+        menuQR.classList.add('hidden');
+        renderLogin();
+      });
+    }
+
+    // On page load
+    document.addEventListener('DOMContentLoaded', () => {
+      const token = localStorage.getItem('token');
+      const role = localStorage.getItem('role');
+      if (token && role) {
+        showMenuForRole(role);
+        renderContentForRole(role);
+      } else {
+        renderLogin();
+      }
+    });
+  </script>
+</body>
+</html>
